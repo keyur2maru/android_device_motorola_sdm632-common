@@ -509,13 +509,12 @@ then
     if [ -f "$file" ]
     then
         setprop vendor.gralloc.disable_ubwc 1
-        cat $file | while read line; do
-          case "$line" in
-                    *"ubwc"*)
-                    setprop vendor.gralloc.enable_fb_ubwc 1
-                    setprop vendor.gralloc.disable_ubwc 0
-                esac
-        done
+        # channel A17: DO NOT enable FB UBWC even though the MDP HW advertises ubwc caps.
+        # We render with Mesa/freedreno (Adreno 506, a5xx) which CANNOT produce UBWC (a6xx-only);
+        # if the FB-target is flagged RGBA_8888_UBWC the MDP decompresses Mesa's plain-linear
+        # buffer as UBWC -> garbled panel. Keep UBWC disabled. (Original loop set enable_fb_ubwc=1
+        # / disable_ubwc=0 when caps contained "ubwc" -- neutered below.)
+        setprop vendor.gralloc.enable_fb_ubwc 0
     fi
 else
     set_perms /sys/devices/virtual/hdcp/msm_hdcp/min_level_change system.graphics 0660
