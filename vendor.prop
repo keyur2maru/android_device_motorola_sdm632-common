@@ -79,10 +79,16 @@ ro.sf.hwc_set_default_colormode=true
 debug.renderengine.backend=skiaglthreaded
 debug.sf.hw=1
 debug.sf.latch_unsignaled=0
-vendor.gralloc.enable_fb_ubwc=1
+vendor.gralloc.enable_fb_ubwc=0
+# Force all gralloc/GPU + Venus video-decoder output buffers to LINEAR (no UBWC).
+# Mesa/Freedreno (a5xx) cannot sample QCOM UBWC-compressed NV12; without this the
+# Venus HW decoder tags its output-port buffers DRM_FORMAT_MOD_QCOM_COMPRESSED and
+# Mesa imports them as linear -> green/garbage frames on video playback. The
+# libOmxVdec blob reads this exact prop to select linear vs UBWC for its OPB.
+debug.gralloc.gfx_ubwc_disable=1
 dev.pm.dyn_samplingrate=1
 ro.opengles.version=196610
-ro.hardware.egl=adreno
+ro.hardware.egl=mesa
 ro.hardware.vulkan=msm8953
 vendor.display.disable_scaler=1
 
