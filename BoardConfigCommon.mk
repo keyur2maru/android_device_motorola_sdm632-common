@@ -127,10 +127,22 @@ BOARD_KERNEL_CMDLINE += androidboot.hardware=qcom ehci-hcd.park=3 lpm_levels.sle
 BOARD_KERNEL_CMDLINE += androidboot.bootdevice=7824900.sdhci androidboot.usbconfigfs=true
 BOARD_KERNEL_CMDLINE += loop.max_part=7 androidboot.boot_devices=soc/7824900.sdhci
 BOARD_KERNEL_CMDLINE += androidboot.veritymode=eio
+# === DEBUG (remove after first-boot bring-up) ===
+# watchdog_v2.enable=0: disable the MSM HW watchdog (watchdog_v2.c module_param) so a kernel
+#   hang during #38's boot doesn't silently reset at ~5s with no log (and no charger-loop
+#   pstore overwrite). With it off, #38 either boots through to adbd, or PANICs at the real
+#   failure point — which writes a dmesg-ramoops dump WITH the #38 banner + reason we can read.
+# androidboot.selinux=permissive: rule out an SELinux-denial-induced init reboot in the same pass.
+BOARD_KERNEL_CMDLINE += watchdog_v2.enable=0
+BOARD_KERNEL_CMDLINE += androidboot.selinux=permissive
 # recovery-as-boot: this legacy Moto bootloader does NOT inject androidboot.force_normal_boot, so
 # first-stage init otherwise stays in recovery -> bootloop. Hardcode it (the known-good hand-packed
 # boot.img carried it). Verified via boot-header diff of the plain `m bootimage` output.
 BOARD_KERNEL_CMDLINE += androidboot.force_normal_boot=1
+# printk.devkmsg=on: disable the /dev/kmsg write ratelimit so netbpfload's full BTF
+# verifier log reaches the kernel console (ramoops). Default "ratelimit" suppressed
+# 313 lines of the BTF_LOAD -22 dump (2026-07-05). DIAG aid; drop for ship.
+BOARD_KERNEL_CMDLINE += printk.devkmsg=on
 BOARD_KERNEL_BASE := 0x80000000
 BOARD_KERNEL_PAGESIZE :=  2048
 BOARD_KERNEL_OFFSET := 0x00008000

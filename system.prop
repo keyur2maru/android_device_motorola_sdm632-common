@@ -1,3 +1,10 @@
+# BRING-UP DEBUG: bring adb up ASAP and without auth, so we catch the device on adb
+# the instant init reaches it (and it stays up on the stable LOS-kernel bridge). Remove
+# for a release build.
+persist.sys.usb.config=adb
+ro.adb.secure=0
+persist.adb.tls_server.enable=0
+
 # Audio
 use.voice.path.for.pcm.voip=false
 
