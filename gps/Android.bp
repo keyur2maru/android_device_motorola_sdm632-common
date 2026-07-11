@@ -7,6 +7,14 @@ GNSS_CFLAGS = [
     "-Wunused-function",
     "-Wimplicit-fallthrough",
     "-Wno-undefined-bool-conversion",
+    // This QCOM GNSS source is a frozen lineage port; AOSP-17's clang-r584948b
+    // flags unused vars/functions/labels in code paths whose users were
+    // #ifdef'd/removed in the port (e.g. loc_cfg.cpp gid_list/group_index/
+    // gtp_cell_ap_enabled). Keep -Werror for real errors but make the unused-*
+    // warnings non-fatal across the GNSS component instead of per-file edits.
+    "-Wno-error=unused-variable",
+    "-Wno-error=unused-function",
+    "-Wno-error=unused-label",
 ]
 
 soong_config_module_type {

@@ -80,7 +80,8 @@ cc_binary {
         "libbase",
         "libutils",
         "libgps.utils",
-        "libqti_vndfwk_detect_vendor",
+        // libqti_vndfwk_detect is vendor_available; vendor variant is the base name.
+        "libqti_vndfwk_detect",
         "libhidlbase",
         "android.hardware.gnss@1.0",
         "android.hardware.gnss@1.1",
