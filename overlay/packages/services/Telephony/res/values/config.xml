@@ -17,9 +17,15 @@
 <!-- Phone app resources that may need to be customized
      for different hardware or product builds. -->
 <resources>
-    <!-- String indicating the package name of the device ImsService implementation for MMTEL. -->
+    <!-- VoLTE: bind the vendor org.codeaurora.ims (ims.apk) ImsService.
+         The prebuilt is present and healthy on-device (qcrild IImsRadio up, IMS PDN
+         connected, P-CSCF received) and its manifest declares the MMTEL_FEATURE +
+         EMERGENCY_MMTEL_FEATURE metadata, but ImsResolver never binds it because the
+         device config_ims_*_package strings were blank -> no MMTEL feature assigned
+         -> no IMS voice. Point the platform ImsResolver at the package so it gets the
+         MMTEL (VoLTE) and RCS features. Emergency MMTEL rides on the MMTEL service via
+         its EMERGENCY_MMTEL_FEATURE metadata (no separate package config exists in
+         A17; config_ims_package is the legacy compat key and is not defined here). -->
     <string name="config_ims_mmtel_package" translatable="false">org.codeaurora.ims</string>
-
-    <!-- String indicating the package name of the device ImsService implementation for RCS. -->
     <string name="config_ims_rcs_package" translatable="false">org.codeaurora.ims</string>
 </resources>
