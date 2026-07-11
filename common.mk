@@ -26,8 +26,33 @@ $(call inherit-product, vendor/motorola/sdm632-common/sdm632-common-vendor.mk)
 
 PRODUCT_OTA_ENFORCE_VINTF_KERNEL_REQUIREMENTS := true
 
+# Moved from BoardConfigCommon (PRODUCT_* is readonly in AOSP BoardConfig).
+# NOTE: $(LOCAL_PATH) is empty here (clobbered by the inherit-product above),
+# which produced a root-anchored "/sepolicy/private" that crashed soong's
+# se_build_files glob. Use the explicit device-common path (matches the
+# reference tree's $(PLATFORM_PATH)/sepolicy/private).
+PRODUCT_PRIVATE_SEPOLICY_DIRS += device/motorola/sdm632-common/sepolicy/private
+PRODUCT_VENDOR_MOVE_ENABLED := true
+
 # Add common definitions for Qualcomm
 $(call inherit-product, hardware/qcom-caf/common/common.mk)
+
+# ABI FIX (libjson): empty stub shared lib to satisfy the DT_NEEDED "libjson.so" tag carried
+# by the A10 vendor blobs libril-qc-hal-qmi.so (qcrild) and libpdmapper.so. Neither imports
+# any libjson symbol, so the stub only needs to exist. Module in
+# vendor/motorola/sdm632-common/libjson_stub. Ships to /vendor/lib{,64}/libjson.so.
+PRODUCT_PACKAGES += \
+    libjson
+
+# Mesa3D EGL/GLES/GBM stack (ro.hardware.egl=mesa in vendor.prop selects it at runtime).
+# libGLESv2_adreno stays in sdm632-common-vendor.mk because the camera blob has a
+# DT_NEEDED on it.
+PRODUCT_PACKAGES += \
+    libgallium_dri \
+    libEGL_mesa \
+    libGLESv2_mesa \
+    libGLESv1_CM_mesa \
+    libgbm_mesa
 
 # Overlays
 DEVICE_PACKAGE_OVERLAYS += \
@@ -89,9 +114,15 @@ PRODUCT_PACKAGES += \
     vendor.qti.hardware.camera.device@1.0:64
 
 # Cgroup and task_profiles
+# AOSP-17 dropped the API-28 legacy profiles (cgroups_28/task_profiles_28.json) from
+# system/core/libprocessgroup/profiles. The A11 vendor + 4.9 kernel need the legacy
+# cgroup-v1 layout (schedtune /dev/stune), so we vendor the device's actual profiles
+# (pulled from the live LOS-22.2 vendor partition) and copy from the device tree.
+# NOTE: hardcoded device path (not $(LOCAL_PATH)) — LOCAL_PATH is empty here, same reason
+# the sepolicy dirs above are hardcoded.
 PRODUCT_COPY_FILES += \
-    system/core/libprocessgroup/profiles/cgroups_28.json:$(TARGET_COPY_OUT_VENDOR)/etc/cgroups.json \
-    system/core/libprocessgroup/profiles/task_profiles_28.json:$(TARGET_COPY_OUT_VENDOR)/etc/task_profiles.json
+    device/motorola/sdm632-common/configs/legacy/cgroups_28.json:$(TARGET_COPY_OUT_VENDOR)/etc/cgroups.json \
+    device/motorola/sdm632-common/configs/legacy/task_profiles_28.json:$(TARGET_COPY_OUT_VENDOR)/etc/task_profiles.json
 
 # Configstore
 PRODUCT_PACKAGES += \
@@ -114,6 +145,15 @@ PRODUCT_PACKAGES += \
     vendor.qti.hardware.memtrack-service
 
 $(call soong_config_set,qtidisplay,display_config_variable_info_has_pixel_formats,true)
+# channel A17: this device runs an inline Linux 4.9 kernel (TARGET_KERNEL_VERSION := 4.9
+# in BoardConfigCommon.mk). Publish that to the qtidisplay soong_config namespace so the
+# media (libOmxVdec/libOmxVenc) and display selects on "target_kernel_version" resolve to
+# "4.9" and define -D_TARGET_KERNEL_VERSION_49_. Without this the OMX codecs compiled
+# against the generated 4.9 kernel uapi headers fail to build: (a) linux/ion.h double
+# definition (the 49 guard pre-defines _UAPI_LINUX_ION_H to suppress libion's ion.h body),
+# (b) ion_prefetch_regions/ion_prefetch_data fields are pointers not __u64 on 4.9, and
+# (c) V4L2_BUF_FLAG_DATA_CORRUPT is spelled V4L2_QCOM_BUF_DATA_CORRUPT on the 4.9 uapi.
+$(call soong_config_set,qtidisplay,target_kernel_version,4.9)
 
 # DRM
 PRODUCT_PACKAGES += \
@@ -272,6 +312,13 @@ PRODUCT_COPY_FILES += \
     frameworks/native/data/etc/android.software.vulkan.deqp.level-2020-03-01.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.software.vulkan.deqp.level.xml
 
 # OMX
+# channel A17: the A10-era QCOM OMX video codec stack (libOmxVdec/Venc/Core + the
+# libstagefrighthw OMX plugin). Re-enabled: the earlier build breakage (ion.h struct
+# redefinitions, undeclared V4L2_BUF_FLAG_DATA_CORRUPT, ion_prefetch_regions pointer/int
+# mismatches) was a header/ABI drift after the 4.9 kernel headers were regenerated. Root
+# cause: -D_TARGET_KERNEL_VERSION_49_ was not being defined because the qtidisplay
+# target_kernel_version soong_config was unset (now set to 4.9 above). The 49 code paths
+# already handle all three cases correctly against the current 4.9 uapi.
 PRODUCT_PACKAGES += \
     libOmxCore \
     libOmxVdec \
@@ -279,8 +326,13 @@ PRODUCT_PACKAGES += \
     libstagefrighthw
 
 # Power
+# channel A17: android.hardware.power-service-qti has NO module definition in this
+# tree (it was a phantom PRODUCT_PACKAGES entry that a clean build silently drops,
+# so no IPower service registered -> HintManagerService NPE on getSupportInfo() ->
+# system_server FATAL). Use the AOSP AIDL example service (V7); it ships the
+# power-default.xml VINTF fragment declaring android.hardware.power.IPower/default.
 PRODUCT_PACKAGES += \
-    android.hardware.power-service-qti
+    android.hardware.power-service.example
 
 # QCOM
 PRODUCT_COPY_FILES += \
@@ -319,12 +371,33 @@ PRODUCT_PACKAGES += \
 # Soong
 PRODUCT_SOONG_NAMESPACES += \
     $(LOCAL_PATH) \
-    hardware/motorola
+    hardware/motorola \
+    hardware/qcom-caf/msm8953 \
+    vendor/qcom/opensource/dataservices
+# channel A17: activate the dataservices soong_namespace so librmnetctl is a FIRST-CLASS product
+# module that rebuilds from source on every change. It was missing here, so librmnetctl (which
+# the A10 netmgrd/adpl blobs dlopen for rmnetctl_init / rmnet_set_link_ingress_data_format_tailspace)
+# was only reachable as a stale cross-namespace dep — the `rmnetctl.old_rmnet_data`/USE_OLD_RMNET_DATA
+# flag silently never rebuilt the shipped .so. No module-name collisions with the other active
+# namespaces (datatop/librmnetctl/rmnetcli are unique). See rmnetctl/Android.bp + BoardConfigCommon.mk.
 
 # Speed Profiles
 PRODUCT_SYSTEM_SERVER_COMPILER_FILTER := speed-profile
 
-# Telephony
+# Telephony (QCOM IMS/VoLTE extensions)
+# qti-telephony-hidl-wrapper / qti-telephony-utils / telephony-ext are the qcom
+# telephony framework extensions the prebuilt IMS app (org.codeaurora.ims,
+# system_ext/priv-app/ims/ims.apk) hard-depends on via <uses-library>. Their
+# SOURCE lives in the qcom commonsys telephony repos, which must be synced into
+# this tree (see .repo/local_manifests/channel_a17.xml):
+#   vendor/qcom/opensource/commonsys/telephony
+#       -> telephony-ext, qti-telephony-hidl-wrapper (+ qti_telephony_hidl_wrapper.xml),
+#          qti-telephony-utils (+ qti_telephony_utils.xml)
+#   vendor/qcom/opensource/commonsys-intf/telephony
+#       -> ims-ext-common (+ ims_ext_common.xml)   [already listed under # IMS above]
+# telephony-ext is a PRODUCT_BOOT_JAR, so its source MUST be present or
+# platform-bootclasspath hard-fails. Without these libraries the ims priv-app
+# fails class resolution (NoClassDefFoundError) and no framework ImsService binds.
 PRODUCT_PACKAGES += \
     qti-telephony-hidl-wrapper \
     qti_telephony_hidl_wrapper.xml \
@@ -334,6 +407,20 @@ PRODUCT_PACKAGES += \
 
 PRODUCT_BOOT_JARS += \
     telephony-ext
+
+# Prebuilt QCOM IMS app (framework MMTEL ImsService, android.telephony.ims.ImsService)
+# and QtiTelephonyService. These were dropped from sdm632-common-vendor.mk during
+# A17 bring-up (they crash-looped with NoClassDefFoundError ONLY because the
+# telephony-ext/qti-telephony-*/ims-ext-common uses-library deps above were absent).
+# Re-added here (common.mk is additive to PRODUCT_PACKAGES) to restore VoLTE.
+# NOTE: QtiTelephonyService is a persistent app; if it still crash-loops on A17
+# (its bundled qcrilhook classes reference removed framework APIs, which grafting
+# the extension SOURCE cannot fix in the prebuilt), drop QtiTelephonyService only
+# -- VoLTE is provided by the 'ims' ImsService and does not require it.
+PRODUCT_PACKAGES += \
+    ims \
+    QtiTelephonyService \
+    QtiTelephonyServicelibrary
 
 # Thermal
 PRODUCT_PACKAGES += \
@@ -367,7 +454,15 @@ PRODUCT_COPY_FILES += \
     vendor/qcom/opensource/vibrator/excluded-input-devices.xml:$(TARGET_COPY_OUT_VENDOR)/etc/excluded-input-devices.xml
 
 # Wifi
+# The base wpa_supplicant.conf is the template the AIDL supplicant HAL copies to
+# /data/vendor/wifi/wpa/wpa_supplicant.conf on the first addStaInterface() call
+# (external/wpa_supplicant_8/wpa_supplicant/aidl/supplicant.cpp ensureConfigFileExists).
+# Without it, addStaInterface(wlan0) fails with "Conf file does not exist" and WiFi
+# never starts. The legacy hardware/qcom/wlan/legacy/qcwcn/config/Android.mk that used
+# to build it is not parsed in this tree (and lacks its template/script), so ship it
+# directly as a PRODUCT_COPY_FILES entry like the overlay confs.
 PRODUCT_COPY_FILES += \
+    $(LOCAL_PATH)/wifi/wpa_supplicant.conf:$(TARGET_COPY_OUT_VENDOR)/etc/wifi/wpa_supplicant.conf \
     $(LOCAL_PATH)/wifi/p2p_supplicant_overlay.conf:$(TARGET_COPY_OUT_VENDOR)/etc/wifi/p2p_supplicant_overlay.conf \
     $(LOCAL_PATH)/wifi/wpa_supplicant_overlay.conf:$(TARGET_COPY_OUT_VENDOR)/etc/wifi/wpa_supplicant_overlay.conf \
     $(LOCAL_PATH)/wifi/WCNSS_qcom_cfg.ini:$(TARGET_COPY_OUT_VENDOR)/firmware/wlan/prima/WCNSS_qcom_cfg.ini
@@ -378,8 +473,7 @@ PRODUCT_PACKAGES += \
     hostapd_cli \
     libwifi-hal-qcom \
     WifiOverlay \
-    wpa_supplicant \
-    wpa_supplicant.conf
+    wpa_supplicant
 
 # WCNSS
 PRODUCT_PACKAGES += \
