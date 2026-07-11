@@ -1,3 +1,6 @@
 unix_socket_connect(mediacodec, perfd, perfd)
 
 get_prop(mediacodec, vendor_display_prop)
+
+# ION heap access for the OMX AVC encoder (screen recording) on this 4.9 ION kernel.
+allow mediacodec ion_device:chr_file rw_file_perms;

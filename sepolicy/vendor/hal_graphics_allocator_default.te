@@ -1,0 +1,4 @@
+# ION heap access for gralloc (buffer allocation) on this legacy sdm632 4.9 ION
+# kernel. Without the /dev/ion relabel (file_contexts) + this grant the allocator
+# cannot open/ioctl the ION node and graphics HALs fail with SELinux denials.
+allow hal_graphics_allocator_default ion_device:chr_file rw_file_perms;

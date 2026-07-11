@@ -1,0 +1,7 @@
+# SurfaceFlinger is a coredomain (plat), so its ION grant must live in the
+# private/plat sepolicy (PRODUCT_PRIVATE_SEPOLICY_DIRS) and rides in plat_sepolicy
+# on system.img. On this legacy sdm632 4.9 ION kernel SF touches /dev/ion for
+# virtual-display / screen-capture buffers; the /dev/ion relabel (vendor
+# file_contexts) plus this grant clear the "denied ... ion_device:chr_file"
+# denials on the virtual-display path.
+allow surfaceflinger ion_device:chr_file rw_file_perms;

@@ -1,5 +1,9 @@
 get_prop(flags_health_check, apexd_prop)
-get_prop(flags_health_check, apk_verity_prop)
+# apk_verity_prop was removed from AOSP-17's current platform sepolicy (it now
+# exists only in the version-compat shims private/compat/*.cil, not in current
+# public/private property.te). Reading it here made recovery_sepolicy.cil fail
+# with "unknown type apk_verity_prop". Dropped this single get_prop of a
+# now-nonexistent platform prop (this Motorola daemon bulk-reads props; harmless).
 get_prop(flags_health_check, bluetooth_prop)
 get_prop(flags_health_check, bluetooth_a2dp_offload_prop)
 get_prop(flags_health_check, bluetooth_audio_hal_prop)

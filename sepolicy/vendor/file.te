@@ -7,6 +7,11 @@ type sysfs_fingerprint, sysfs_type, fs_type;
 type fingerprint_data_file, data_file_type, file_type;
 type fingerprint_socket, data_file_type, file_type;
 type sysfs_hwmon, sysfs_type, fs_type;
+# LiveDisplay sysfs tuneables node type (read/written by system_server in this
+# dir's system_server.te). The lineage-HAL sepolicy layer that would declare it
+# isn't grafted into this AOSP system/sepolicy -> recovery_sepolicy.cil failed with
+# "unknown type sysfs_livedisplay_tuneable". Declared as a sysfs file type.
+type sysfs_livedisplay_tuneable, sysfs_type, fs_type;
 type sysfs_sensor, sysfs_type, fs_type;
 type sysfs_wifi, sysfs_type, fs_type;
 type vendor_sysfs_mmc_device_type, sysfs_type, fs_type;

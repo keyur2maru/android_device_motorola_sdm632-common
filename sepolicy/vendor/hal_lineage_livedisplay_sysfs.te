@@ -1,1 +1,6 @@
+# lineage-HAL framework not grafted into AOSP system/sepolicy; declare the
+# sysfs-backend LiveDisplay HAL service domain type (used directly by the rule
+# below) so recovery_sepolicy.cil compiles. Bare domain decl = neverallow-safe.
+type hal_lineage_livedisplay_sysfs, domain;
+
 r_dir_file(hal_lineage_livedisplay_sysfs, sysfs_graphics)

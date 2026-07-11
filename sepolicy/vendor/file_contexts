@@ -13,6 +13,12 @@
 /dev/mmi_sys_temp            u:object_r:thermal_device:s0
 /dev/socket/perfd            u:object_r:perfd_socket:s0
 
+# ION heap node: on this legacy sdm632 tree /dev/ion was resolving to the
+# generic "device" label, breaking the OMX AVC encoder (screen recording) and
+# the graphics HALs. Relabel it explicitly (vendor file_contexts is applied
+# last, so this wins). Grants live in ion.te / mediacodec.te / hal_graphics_*.te.
+/dev/ion                     u:object_r:ion_device:s0
+
 /fsg                         u:object_r:fsg_firmware_file:s0
 /(vendor|system/vendor)/fsg  u:object_r:fsg_firmware_file:s0
 
@@ -33,6 +39,7 @@
 /(vendor|system/vendor)/bin/hw/android\.hardware\.biometrics\.fingerprint@2\.1-service-ets   u:object_r:hal_fingerprint_fpc_exec:s0
 /(vendor|system/vendor)/bin/hw/motorola\.hardware\.audio@2\.0-service            u:object_r:hal_audio_default_exec:s0
 /(vendor|system/vendor)/bin/hw/motorola\.hardware\.audio\.adspd@1\.0-service    u:object_r:hal_audio_default_exec:s0
+/(vendor|system/vendor)/bin/hw/android\.hardware\.light-service\.lineage        u:object_r:hal_light_default_exec:s0
 /(vendor|system/vendor)/bin/init\.mmi\.(laser|usb)\.sh                          u:object_r:qti_init_shell_exec:s0
 /(vendor|system/vendor)/bin/init\.qcom\.power\.sh                               u:object_r:qti_init_shell_exec:s0
 /(vendor|system/vendor)/bin/perfd                                               u:object_r:perfd_exec:s0
