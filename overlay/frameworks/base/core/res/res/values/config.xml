@@ -308,6 +308,13 @@
         <item>"/system/bin/surfaceflinger"</item>
     </string-array>
 
+    <!-- The prebuilt webview.apk carries no pinlist.meta, so the Pinner Service blob-pins
+         the head of a 92MB archive. That drains the global pin quota (10% of 2GB) and the
+         next file in the same loop gets a null PinnedFile, which
+         SystemImpl.pinWebviewIfRequired() dereferences unchecked. Pinning a truncated
+         prefix of the archive buys nothing on a device this size anyway. -->
+    <integer name="config_pinnerWebviewPinBytes">0</integer>
+
     <!-- Values for USB port setting. in format of bootmode:current function:new function -->
     <string-array translatable="false" name="config_oemUsbModeOverride">
         <item>"bp-tools:mtp:diag,serial,rmnet:mtp"</item>
