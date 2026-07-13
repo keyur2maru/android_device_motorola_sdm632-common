@@ -456,8 +456,15 @@ PRODUCT_PACKAGES_DEBUG += \
     update_engine_client
 
 # USB
+# vendor/qcom/opensource/usb/vendor_product.mk is never inherited by this product,
+# so none of the vendor.usb.* properties its HAL and init scripts read were set,
+# and the gadget HAL it gates behind a board allow-list (which msm8953 is not on)
+# was never built. Everything it would have configured is set here instead, with
+# the values this SoC actually needs rather than the ones it picks for us.
 PRODUCT_PACKAGES += \
     android.hardware.usb@1.0-service \
+    android.hardware.usb.gadget-service.qti \
+    usb_compositions.conf \
     init.qcom.usb.rc \
     init.qcom.usb.sh
 

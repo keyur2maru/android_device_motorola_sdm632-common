@@ -215,6 +215,17 @@ persist.timed.enable=true
 vendor.usb.rmnet.func.name=rmnet_bam
 vendor.usb.rmnet.inst.name=rmnet
 vendor.usb.rndis.func.name=rndis_bam
+# The UDC the gadget HAL binds; without it the HAL exits before registering.
+vendor.usb.controller=7000000.dwc3
+# Hands composition switching to android.hardware.usb.gadget-service.qti: init.qcom.usb.rc
+# reacts by setting sys.usb.configfs=2, which retires its own property-trigger
+# compositions and starts usbd.
+vendor.usb.use_gadget_hal=1
+# Makes init.qcom.usb.rc create the ffs.mtp/ffs.ptp functions and mount
+# /dev/usb-ffs/{mtp,ptp}. UsbDeviceManager opens /dev/usb-ffs/mtp/ep0 itself, so MTP and
+# PTP cannot work without it. QCOM leaves it off below kernel 4.19 because their own MTP
+# stack used the f_mtp functions instead; functionfs itself is fine on 4.9, adb uses it.
+vendor.usb.use_ffs_mtp=1
 
 # Watchdog
 ro.hw_timeout_multiplier=3
