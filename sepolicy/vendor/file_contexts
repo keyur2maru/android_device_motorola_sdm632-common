@@ -10,6 +10,13 @@
 # Persist
 /persist(/*)?                u:object_r:mnt_vendor_file:s0
 
+# HAL binaries this tree adds. AOSP's vendor file_contexts only labels the .example /
+# .default names, and device/qcom/sepolicy_vndr (which labels the .qti ones) is not in
+# BOARD_VENDOR_SEPOLICY_DIRS, so both would fall back to vendor_file. Harmless while the
+# board boots permissive, but they need the right domain before enforcing.
+/(vendor|system/vendor)/bin/hw/android\.hardware\.usb\.gadget-service\.qti    u:object_r:hal_usb_gadget_default_exec:s0
+/(vendor|system/vendor)/bin/hw/android\.hardware\.thermal-service\.sdm632     u:object_r:hal_thermal_default_exec:s0
+
 /dev/mmi_sys_temp            u:object_r:thermal_device:s0
 /dev/socket/perfd            u:object_r:perfd_socket:s0
 
