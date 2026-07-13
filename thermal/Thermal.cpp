@@ -65,8 +65,13 @@ bool contains(const std::string& haystack, const char* needle) {
 }
 
 // The kernel exposes no type taxonomy, only a free-form zone name, so classify
-// by the naming conventions msm8953's tsens/board-thermistor zones use.
-TemperatureType classifyZone(const std::string& name) {
+// by the naming conventions msm8953's tsens/board-thermistor zones use. Zone
+// names mix '-' and '_' as separators (xo-therm-adc vs msm_therm), so match
+// against a separator-normalized form.
+TemperatureType classifyZone(const std::string& raw_name) {
+    std::string name = raw_name;
+    std::replace(name.begin(), name.end(), '-', '_');
+
     if (contains(name, "gpu")) return TemperatureType::GPU;
     if (contains(name, "cpu") || contains(name, "cluster") || contains(name, "kryo") ||
         contains(name, "apc"))
@@ -78,17 +83,18 @@ TemperatureType classifyZone(const std::string& name) {
     if (contains(name, "modem") || contains(name, "mdm")) return TemperatureType::MODEM;
     if (contains(name, "camera") || contains(name, "cam")) return TemperatureType::CAMERA;
     if (contains(name, "flash")) return TemperatureType::FLASHLIGHT;
-    if (contains(name, "pa_therm") || contains(name, "pa-therm")) {
-        return TemperatureType::POWER_AMPLIFIER;
-    }
+    if (contains(name, "pa_therm")) return TemperatureType::POWER_AMPLIFIER;
     // Board-mounted thermistors are what the framework's skin-temperature
     // consumers (thermal headroom, PowerManager) actually want.
     if (contains(name, "skin") || contains(name, "quiet") || contains(name, "case") ||
-        contains(name, "xo_therm") || contains(name, "msm_therm") || contains(name, "emmc_therm") ||
+        contains(name, "xo_therm") || contains(name, "msm_therm") ||
+        contains(name, "emmc_therm") || contains(name, "chg_therm") ||
         contains(name, "pm_therm")) {
         return TemperatureType::SKIN;
     }
-    if (contains(name, "tsens") || contains(name, "soc")) return TemperatureType::SOC;
+    // The zone named "soc" is msm8953's BCL state-of-charge reading -- a battery
+    // percentage, not a temperature -- so it must never be typed as SOC.
+    if (contains(name, "tsens")) return TemperatureType::SOC;
     return TemperatureType::UNKNOWN;
 }
 
