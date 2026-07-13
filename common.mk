@@ -101,9 +101,18 @@ PRODUCT_PACKAGES += \
 TARGET_BOOTANIMATION_HALF_RES := true
 
 # Boot control HAL
+# android.hardware.boot-service.qti has no module definition in this tree, so
+# Soong silently drops it and no IBootControl is registered (update_engine falls
+# back to a stub, vold cannot mark the A/B slot successful). Use the AOSP AIDL
+# boot HAL: BootControlClient::WaitForService() only accepts AIDL or HIDL @1.2,
+# and the @1.1 HIDL service is explicitly rejected, so AIDL is the only option.
+# The AIDL service binary is not directly installable (it is packaged in the
+# com.android.hardware.boot vendor APEX); the recovery variant is installable.
+# libboot_control reads the standard bootloader_control struct from the misc
+# partition, which fstab.qcom already declares at /misc.
 PRODUCT_PACKAGES += \
-    android.hardware.boot-service.qti \
-    android.hardware.boot-service.qti.recovery
+    com.android.hardware.boot \
+    android.hardware.boot-service.default_recovery
 
 $(call soong_config_set,QTI_GPT_UTILS,USE_BSG_FRAMEWORK,false)
 
