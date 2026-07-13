@@ -432,6 +432,14 @@ PRODUCT_PACKAGES += \
     QtiTelephonyServicelibrary
 
 # Thermal
+# The framework only talks AIDL IThermal; the HIDL @1.0 pair below stays for the
+# vendor blobs that still look it up. android.hardware.thermal-service.example
+# is not usable here: it reports hardcoded temperatures and never reads a sensor,
+# so this HAL reads /sys/class/thermal instead and derives throttling severity
+# from each zone's trip points.
+PRODUCT_PACKAGES += \
+    android.hardware.thermal-service.sdm632
+
 PRODUCT_PACKAGES += \
     android.hardware.thermal@1.0-impl:64 \
     android.hardware.thermal@1.0-service
