@@ -41,8 +41,11 @@
             <defaultOutputDevice>Speaker</defaultOutputDevice>
             <mixPorts>
                 <mixPort name="primary output" role="source" flags="AUDIO_OUTPUT_FLAG_PRIMARY">
+                    <!-- 41000 was a typo for 44100 and is not a real rate. It never got
+                         picked, because a non-direct mix port selects its highest rate, but
+                         it was still offered to apps as a supported one. -->
                     <profile name="" format="AUDIO_FORMAT_PCM_16_BIT"
-                             samplingRates="41000,48000" channelMasks="AUDIO_CHANNEL_OUT_STEREO"/>
+                             samplingRates="48000" channelMasks="AUDIO_CHANNEL_OUT_STEREO"/>
                 </mixPort>
                 <mixPort name="deep_buffer" role="source"
                         flags="AUDIO_OUTPUT_FLAG_DEEP_BUFFER">
