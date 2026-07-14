@@ -124,7 +124,14 @@ TARGET_FS_CONFIG_GEN += \
 
 # Kernel
 BOARD_KERNEL_CMDLINE += androidboot.hardware=qcom ehci-hcd.park=3 lpm_levels.sleep_disabled=1
-BOARD_KERNEL_CMDLINE += androidboot.bootdevice=7824900.sdhci androidboot.usbconfigfs=true
+# androidboot.usbconfigfs is deliberately NOT set. It is LineageOS boilerplate from the initial tree
+# import, and LineageOS drives the USB gadget from init alone. We run the QTI gadget HAL instead
+# (vendor.usb.use_gadget_hal=1), and init.qcom.usb.rc has two competing `on boot` triggers: the gadget-HAL
+# one sets sys.usb.configfs=2 to retire the property-driven compositions, and the ro.boot.usbconfigfs one
+# sets it back to 1. The latter wins on file order, so both the HAL and init end up writing
+# /config/usb_gadget/g1/UDC. They race; the loser leaves udc_name latched, every retry then fails with
+# EBUSY ("udc 7000000.dwc3: failed to start g1: -19"), and USB never enumerates until the next boot.
+BOARD_KERNEL_CMDLINE += androidboot.bootdevice=7824900.sdhci
 BOARD_KERNEL_CMDLINE += loop.max_part=7 androidboot.boot_devices=soc/7824900.sdhci
 BOARD_KERNEL_CMDLINE += androidboot.veritymode=eio
 # === DEBUG (remove after first-boot bring-up) ===
