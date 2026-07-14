@@ -161,12 +161,22 @@ TARGET_KERNEL_VERSION := 4.9
 # TARGET_KERNEL_CLANG_PATH.
 TARGET_KERNEL_CLANG_VERSION := r536225
 
+# CONFIG_DEBUG_INFO_BTF needs pahole. BoardConfigKernel.mk overrides PAHOLE= with an absolute path into
+# prebuilts/kernel-build-tools, which no platform manifest syncs, so the kernel links with an empty .BTF
+# section and the BPF programs that need CO-RE fail at load with -EINVAL. Point it at the host's pahole
+# (the dwarves package) instead; kernel.mk appends these flags after BoardConfigKernel.mk, so this
+# assignment wins. Resolve it against a clean PATH rather than the build's: soong replaces PATH with a
+# sandbox of wrappers that refuse to exec pahole ("not allowed to be used"), so both a bare name and a
+# $(shell command -v pahole) would find the wrapper. Only an absolute path to the real binary escapes it.
+TARGET_KERNEL_ADDITIONAL_FLAGS := PAHOLE=$(shell PATH=/usr/local/bin:/usr/bin:/bin command -v pahole)
+
 # Declare boot header
 BOARD_BOOT_HEADER_VERSION := 1
 BOARD_MKBOOTIMG_ARGS += --header_version $(BOARD_BOOT_HEADER_VERSION)
-# ramdisk_offset 0x03000000 (load addr 0x83000000): mkbootimg's default 0x01000000 places the large
-# recovery-as-boot ramdisk where it collides with the kernel -> bootloop. Matches the known-good boot.
-BOARD_MKBOOTIMG_ARGS += --ramdisk_offset 0x03000000
+# ramdisk_offset 0x03800000 (load addr 0x83800000): the ramdisk must load above the kernel image, which
+# with CONFIG_DEBUG_INFO_BTF reaches ~0x8322c000. mkbootimg's default 0x01000000, and the 0x03000000 that
+# sufficed before BTF, both land inside kernel BSS -> the kernel silently resets a few seconds in.
+BOARD_MKBOOTIMG_ARGS += --ramdisk_offset 0x03800000
 
 # Lights
 TARGET_PROVIDES_LIBLIGHT := true
