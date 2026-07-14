@@ -151,15 +151,21 @@ BOARD_KERNEL_SEPARATED_DTBO := true
 BOARD_INCLUDE_RECOVERY_DTBO := true
 TARGET_KERNEL_SOURCE := kernel/motorola/sdm632
 TARGET_KERNEL_VERSION := 4.9
-# Inline kernel build (S5): clang MUST be r536225 (clang 19) — the exact toolchain the OEM/LOS
-# used to build this msm-4.9.337 tree (verified via the device's /proc/version: "based on
-# r536225, clang 19.0.1", built 2026-06-24). AOSP-17 ships only clang 20+ (r547379...); building
-# this old 4.9 kernel with r547379 (clang 20) MISCOMPILES it → kernel faults before console init
-# → splash bootloop with no pstore logs (see BRINGUP "First-boot bringup" V2). clang-r536225 is
-# fetched into prebuilts/clang/host/linux-x86/clang-r536225 (not shipped by AOSP-17). Must be set
-# before BoardConfigKernel.mk (tail of channel/BoardConfig.mk) reads KERNEL_CLANG_VERSION /
+# r584948 is soong's ClangDefaultVersion, i.e. the clang AOSP already ships in prebuilts, so nothing is
+# fetched out of band. This still has to be named explicitly rather than left to BoardConfigKernel.mk's
+# default: that default is $(LLVM_AOSP_PREBUILTS_VERSION), which vendor/lineage/build/envsetup.sh exports
+# from ${CLANG_VERSION}, and nothing sets CLANG_VERSION in this tree -- it resolves empty, leaving
+# TARGET_KERNEL_CLANG_PATH pointing at a versionless directory.
+#
+# This was previously pinned to r536225 (fetched out of band, ~4.7 GB) on the belief that newer clang
+# miscompiles this kernel into a fault before console init. That was wrong: newer clang does not
+# miscompile the kernel, it declines to compile it. -Wdefault-const-init-* and -Wimplicit-enum-enum-cast,
+# neither of which existed in clang 19, reject five genuine bugs in the QCOM techpack/audio vendor code.
+# With those fixed the kernel builds and boots with BTF, eBPF and Mesa intact.
+#
+# Must be set before BoardConfigKernel.mk (tail of channel/BoardConfig.mk) reads KERNEL_CLANG_VERSION /
 # TARGET_KERNEL_CLANG_PATH.
-TARGET_KERNEL_CLANG_VERSION := r536225
+TARGET_KERNEL_CLANG_VERSION := r584948
 
 # CONFIG_DEBUG_INFO_BTF needs pahole. BoardConfigKernel.mk overrides PAHOLE= with an absolute path into
 # prebuilts/kernel-build-tools, which no platform manifest syncs, so the kernel links with an empty .BTF
